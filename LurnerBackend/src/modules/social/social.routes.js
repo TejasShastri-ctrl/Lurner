@@ -5,22 +5,25 @@ import { authMiddleware } from "../../middleware/auth.js";
 const router = express.Router();
 
 /**
- * Social Routes
+ * Social & Invite Routes
  */
 
-// Search for users to follow
-router.get("/search", authMiddleware, socialController.searchUsersHandler);
+// Send friend invite via code
+router.post("/invite", authMiddleware, socialController.sendInviteHandler);
 
-// Follow a user
-router.post("/follow/:id", authMiddleware, socialController.followHandler);
+// Get pending invites for current user
+router.get("/invites/pending", authMiddleware, socialController.getPendingInvitesHandler);
 
-// Unfollow a user
-router.delete("/unfollow/:id", authMiddleware, socialController.unfollowHandler);
+// Accept friend invite
+router.post("/invite/:inviteId/accept", authMiddleware, socialController.acceptInviteHandler);
 
-// Get followers of a specific user
-router.get("/followers/:id", authMiddleware, socialController.getFollowersHandler);
+// Decline friend invite
+router.post("/invite/:inviteId/decline", authMiddleware, socialController.declineInviteHandler);
 
-// Get who a specific user is following
-router.get("/following/:id", authMiddleware, socialController.getFollowingHandler);
+// Unfriend a user
+router.delete("/unfriend/:id", authMiddleware, socialController.unfollowHandler);
+
+// Get current user's friends (following/followers)
+router.get("/friends", authMiddleware, socialController.getFollowingHandler);
 
 export default router;

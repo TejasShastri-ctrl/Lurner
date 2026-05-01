@@ -1,184 +1,307 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
-import { fetchFollowing } from '../../api/api';
+import { fetchFriends, fetchPendingInvites, acceptInvite, declineInvite, sendInvite } from '../../api/api';
 
-/**
- * FriendsSidebar — Retractable right panel.
- * When collapsed, shows a slim 48px rail with a toggle button.
- */
-export default function FriendsSidebar({ open, onToggle, width = 260 }) {
+export default function FriendsSidebar({ open, onToggle, width = 300 }) {
   const { user, token } = useAuth();
-  const { onlineFriends } = useSocket();
-  const [following, setFollowing] = useState([]);
+  const { onlineFriends, socket } = useSocket();
+  
+  const [friends, setFriends] = useState([]);
+  const [pendingInvites, setPendingInvites] = useState([]);
+  const [inviteCodeInput, setInviteCodeInput] = useState('');
   const [loading, setLoading] = useState(true);
+  const [sendingInvite, setSendingInvite] = useState(false);
+  const [showInviteInput, setShowInviteInput] = useState(false);
 
-  useEffect(() => {
-    if (user && token) {
-      fetchFollowing(user.id, token)
-        .then(data => { setFollowing(Array.isArray(data) ? data : []); setLoading(false); })
-        .catch(() => setLoading(false));
+  const loadData = useCallback(async () => {
+    if (!user || !token) return;
+    try {
+      const [friendsData, pendingData] = await Promise.all([
+        fetchFriends(token),
+        fetchPendingInvites(token)
+      ]);
+      setFriends(Array.isArray(friendsData) ? friendsData : []);
+      setPendingInvites(Array.isArray(pendingData) ? pendingData : []);
+    } catch (e) {
+      console.error("Failed to load social data:", e);
+    } finally {
+      setLoading(false);
     }
   }, [user, token]);
 
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Listen for real-time invite signals
+  useEffect(() => {
+    if (socket) {
+      const handleNewInvite = () => {
+        loadData(); // Re-fetch when signaled
+      };
+      socket.on("notification:new_invite", handleNewInvite);
+      return () => socket.off("notification:new_invite", handleNewInvite);
+    }
+  }, [socket, loadData]);
+
+  const handleSendInvite = async (e) => {
+    e.preventDefault();
+    if (!inviteCodeInput.trim()) return;
+    
+    setSendingInvite(true);
+    try {
+      const res = await sendInvite(inviteCodeInput.trim(), token);
+      if (res.error) {
+        alert(res.error);
+      } else {
+        alert("Invite sent!");
+        setInviteCodeInput('');
+        setShowInviteInput(false);
+      }
+    } catch (e) {
+      alert("Failed to send invite");
+    } finally {
+      setSendingInvite(false);
+    }
+  };
+
+  const handleAccept = async (id) => {
+    try {
+      await acceptInvite(id, token);
+      loadData();
+    } catch (e) {
+      alert("Failed to accept invite");
+    }
+  };
+
+  const handleDecline = async (id) => {
+    try {
+      await declineInvite(id, token);
+      loadData();
+    } catch (e) {
+      alert("Failed to decline invite");
+    }
+  };
+
   if (!user) return null;
 
-  const online  = following.filter(f => onlineFriends.includes(f.id));
-  const offline = following.filter(f => !onlineFriends.includes(f.id));
+  const online  = friends.filter(f => onlineFriends.includes(f.id));
+  const offline = friends.filter(f => !onlineFriends.includes(f.id));
 
   return (
     <aside style={{
       width: open ? width : 48,
       background: 'var(--bg-content)',
       borderLeft: '1px solid var(--border)',
-      height: 'calc(100vh - 60px)',
+      height: '100vh',
       position: 'fixed', right: 0, top: 0,
       display: 'flex', flexDirection: 'column',
       overflow: 'hidden',
       transition: 'width 0.25s ease',
-      zIndex: 60,
+      zIndex: 100,
+      boxShadow: open ? '-10px 0 30px rgba(0,0,0,0.2)' : 'none'
     }}>
-
-      {/* Toggle button — always visible */}
+      {/* Toggle button */}
       <button
         onClick={onToggle}
-        title={open ? 'Collapse sidebar' : 'Expand sidebar'}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: open ? 'flex-end' : 'center',
-          width: '100%', padding: open ? '12px 14px' : '12px 0',
+          width: '100%', padding: '16px',
           background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)',
           cursor: 'pointer', color: 'var(--text-muted)',
           transition: 'all 0.15s', flexShrink: 0,
         }}
-        onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-app)'; e.currentTarget.style.color = 'var(--accent)'; }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
       >
-        {open ? (
-          /* Collapse arrow → right */
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="9 18 15 12 9 6"/>
-          </svg>
-        ) : (
-          /* Expand arrow ← left + people icon stacked */
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-            {online.length > 0 && (
-              <div style={{ width: 7, height: 7, borderRadius: '50%',
-                background: 'var(--success)', boxShadow: '0 0 5px var(--success)' }} />
-            )}
-          </div>
-        )}
+        {open ? '→' : '👤'}
       </button>
 
-      {/* Expanded content */}
       {open && (
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 0' }}>
-
-          {/* Section label */}
-          <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)',
-            textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14 }}>
-            Social Hub
-          </div>
-
-          {/* Online section */}
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                Online
-              </span>
-              <div style={{ width: 7, height: 7, borderRadius: '50%',
-                background: 'var(--success)', boxShadow: '0 0 6px var(--success)' }} />
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+          
+          {/* User's Own Code */}
+          <div style={{ 
+            background: 'var(--bg-app)', 
+            padding: '12px', 
+            borderRadius: '12px', 
+            marginBottom: '24px',
+            border: '1px dashed var(--border)'
+          }}>
+            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
+              Your Friend Code
             </div>
-
-            {loading ? (
-              [1, 2, 3].map(i => (
-                <div key={i} style={{ height: 32, marginBottom: 8,
-                  background: 'var(--bg-app)', borderRadius: 8 }} />
-              ))
-            ) : online.length === 0 ? (
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                No friends online
-              </p>
-            ) : (
-              <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {online.map(friend => (
-                  <FriendItem key={friend.id} friend={friend} online={true} />
-                ))}
-              </ul>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <code style={{ fontSize: '0.9rem', color: 'var(--accent)', fontWeight: 700 }}>
+                {user.friendCode || 'LURN-????'}
+              </code>
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText(user.friendCode);
+                  alert("Code copied!");
+                }}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.7rem' }}
+              >
+                Copy
+              </button>
+            </div>
           </div>
 
-          {/* Divider */}
-          <div style={{ height: 1, background: 'var(--border)', margin: '4px 0 16px' }} />
-
-          {/* Offline section */}
-          {!loading && offline.length > 0 && (
-            <div style={{ opacity: 0.55 }}>
-              <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-primary)',
-                marginBottom: 10 }}>
-                Offline
+          {/* Pending Invites */}
+          {pendingInvites.length > 0 && (
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', marginBottom: '12px' }}>
+                Pending Invites ({pendingInvites.length})
               </div>
-              <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {offline.map(friend => (
-                  <FriendItem key={friend.id} friend={friend} online={false} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {pendingInvites.map(invite => (
+                  <div key={invite.id} style={{ 
+                    background: 'var(--accent-light)', 
+                    padding: '10px', 
+                    borderRadius: '8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px'
+                  }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--accent-dark)' }}>
+                      {invite.sender.name} sent an invite
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button 
+                        onClick={() => handleAccept(invite.id)}
+                        style={{ flex: 1, padding: '4px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.7rem', cursor: 'pointer' }}
+                      >
+                        Accept
+                      </button>
+                      <button 
+                        onClick={() => handleDecline(invite.id)}
+                        style={{ flex: 1, padding: '4px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: '4px', fontSize: '0.7rem', cursor: 'pointer' }}
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
+
+          {/* Friends List */}
+          <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '12px' }}>
+            Friends
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            {loading ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Loading friends...</div>
+            ) : friends.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>
+                No friends yet. Share your code to connect!
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {online.map(friend => (
+                  <FriendListItem key={friend.id} friend={friend} online={true} />
+                ))}
+                {offline.map(friend => (
+                  <FriendListItem key={friend.id} friend={friend} online={false} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Footer */}
+      {/* Invite Action */}
       {open && (
-        <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
-          <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'center',
-            fontSize: '0.78rem' }}>
-            Invite Friends
-          </button>
+        <div style={{ padding: '20px', borderTop: '1px solid var(--border)' }}>
+          {showInviteInput ? (
+            <form onSubmit={handleSendInvite}>
+              <input 
+                type="text" 
+                placeholder="Enter Friend Code..." 
+                value={inviteCodeInput}
+                onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase())}
+                autoFocus
+                style={{ 
+                  width: '100%', 
+                  padding: '10px', 
+                  borderRadius: '8px', 
+                  border: '1px solid var(--border)', 
+                  background: 'var(--bg-app)', 
+                  color: 'var(--text-primary)',
+                  marginBottom: '8px',
+                  fontSize: '0.8rem'
+                }}
+              />
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  type="submit" 
+                  disabled={sendingInvite}
+                  style={{ flex: 2, padding: '8px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  {sendingInvite ? 'Sending...' : 'Send'}
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setShowInviteInput(false)}
+                  style={{ flex: 1, padding: '8px', background: 'var(--bg-app)', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: '8px', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <button 
+              onClick={() => setShowInviteInput(true)}
+              style={{ 
+                width: '100%', 
+                padding: '12px', 
+                borderRadius: '8px', 
+                border: '1px solid var(--accent)', 
+                background: 'transparent', 
+                color: 'var(--accent)', 
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                cursor: 'pointer'
+              }}
+            >
+              + Add Friend by Code
+            </button>
+          )}
         </div>
       )}
     </aside>
   );
 }
 
-function FriendItem({ friend, online }) {
+function FriendListItem({ friend, online }) {
   return (
-    <li style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-      <div style={{ position: 'relative', flexShrink: 0 }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: '50%',
-          background: online ? 'var(--accent-light)' : 'var(--bg-app)',
-          border: `1.5px solid ${online ? 'var(--accent)' : 'var(--border)'}`,
+    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div style={{ position: 'relative' }}>
+        <div style={{ 
+          width: '36px', height: '36px', borderRadius: '50%', 
+          background: online ? 'var(--accent)' : 'var(--bg-app)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '0.75rem', fontWeight: 700,
-          color: online ? 'var(--accent-dark)' : 'var(--text-muted)',
-          textTransform: 'uppercase',
+          color: online ? 'white' : 'var(--text-muted)',
+          fontWeight: 700, fontSize: '0.9rem',
+          border: '2px solid var(--border)'
         }}>
           {friend.name[0]}
         </div>
         {online && (
-          <div style={{
-            position: 'absolute', bottom: -1, right: -1,
-            width: 9, height: 9, borderRadius: '50%',
-            background: 'var(--success)', border: '1.5px solid var(--bg-content)',
+          <div style={{ 
+            position: 'absolute', bottom: '0', right: '0', 
+            width: '10px', height: '10px', borderRadius: '50%', 
+            background: 'var(--success)', border: '2px solid var(--bg-content)' 
           }} />
         )}
       </div>
       <div>
-        <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-          {friend.name}
+        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{friend.name}</div>
+        <div style={{ fontSize: '0.7rem', color: online ? 'var(--success)' : 'var(--text-muted)' }}>
+          {online ? 'Online' : 'Offline'}
         </div>
-        {online && (
-          <div style={{ fontSize: '0.68rem', color: 'var(--success)', fontWeight: 500 }}>
-            Active now
-          </div>
-        )}
       </div>
-    </li>
+    </div>
   );
 }

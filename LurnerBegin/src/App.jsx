@@ -2,6 +2,7 @@ import './index.css'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { SqlExecutionWindow } from './SQLEditor'
 import Home from './pages/Home'
+import Insights from './pages/Insights'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import AppLayout from './components/Layout/AppLayout'
@@ -33,6 +34,9 @@ function App() {
               {/* Protected routes */}
               <Route path="/" element={
                 <ProtectedRoute><Home /></ProtectedRoute>
+              } />
+              <Route path="/insights" element={
+                <ProtectedRoute><Insights /></ProtectedRoute>
               } />
               <Route path="/editor/:id" element={
                 <ProtectedRoute><SqlExecutionWindow /></ProtectedRoute>

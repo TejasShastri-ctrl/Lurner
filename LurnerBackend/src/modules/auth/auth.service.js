@@ -1,6 +1,7 @@
 import prisma from "../../config/prisma.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { generateFriendCode } from "../social/social.service.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "lurner_secret_key_123";
 
@@ -9,12 +10,14 @@ const JWT_SECRET = process.env.JWT_SECRET || "lurner_secret_key_123";
  */
 export const registerUser = async (username, email, password) => {
     const hashedPassword = await bcrypt.hash(password, 10);
+    const friendCode = generateFriendCode();
     
     return prisma.user.create({
         data: {
             name: username, // Mapping username to 'name' in schema
             email,
-            password: hashedPassword
+            password: hashedPassword,
+            friendCode
         }
     });
 };

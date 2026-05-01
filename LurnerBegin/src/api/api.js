@@ -89,8 +89,88 @@ export const executeSql = async (sql, questionId, token, sessionId) => {
     return await res.json();
 }
 
-export const fetchFollowing = async (userId, token) => {
-    const res = await fetch(`${BASE_URL}/social/following/${userId}`, {
+// Social & Invites
+export const sendInvite = async (code, token) => {
+    const res = await fetch(`${BASE_URL}/social/invite`, {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ code })
+    });
+    return await res.json();
+}
+
+export const fetchPendingInvites = async (token) => {
+    const res = await fetch(`${BASE_URL}/social/invites/pending`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return await res.json();
+}
+
+export const acceptInvite = async (inviteId, token) => {
+    const res = await fetch(`${BASE_URL}/social/invite/${inviteId}/accept`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return await res.json();
+}
+
+export const declineInvite = async (inviteId, token) => {
+    const res = await fetch(`${BASE_URL}/social/invite/${inviteId}/decline`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return await res.json();
+}
+
+export const fetchFriends = async (token) => {
+    const res = await fetch(`${BASE_URL}/social/friends`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return await res.json();
+}
+
+export const unfriendUser = async (userId, token) => {
+    const res = await fetch(`${BASE_URL}/social/unfriend/${userId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return await res.json();
+}
+
+// Analytics
+export const fetchUserStats = async (token) => {
+    const res = await fetch(`${BASE_URL}/analytics/user-stats-summary`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return await res.json();
+}
+
+export const fetchActivityHeatmap = async (token) => {
+    const res = await fetch(`${BASE_URL}/analytics/activity-heatmap`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return await res.json();
+}
+
+export const fetchSkillMastery = async (token) => {
+    const res = await fetch(`${BASE_URL}/analytics/skill-mastery-breakdown`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return await res.json();
+}
+
+export const fetchErrorDistribution = async (token) => {
+    const res = await fetch(`${BASE_URL}/analytics/error-distribution`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return await res.json();
+}
+
+export const fetchPerformanceTelemetry = async (token) => {
+    const res = await fetch(`${BASE_URL}/analytics/performance-telemetry`, {
         headers: { 'Authorization': `Bearer ${token}` }
     });
     return await res.json();

@@ -1,46 +1,123 @@
 import prisma from "../../config/prisma.js";
+import crypto from "crypto";
 
 /**
- * Follow a user (Mutual)
+ * Generate a unique 8-character friend code.
  */
-export const followUser = async (followerId, followingId) => {
-    if (followerId === followingId) {
-        throw new Error("You cannot friend yourself");
+export const generateFriendCode = () => {
+    return `LURN-${crypto.randomBytes(2).toString("hex").toUpperCase()}${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
+};
+
+/**
+ * Find a user by their unique friend code.
+ */
+export const getUserByFriendCode = async (code) => {
+    return prisma.user.findUnique({
+        where: { friendCode: code },
+        select: { id: true, name: true, friendCode: true }
+    });
+};
+
+/**
+ * Send a friend invite using a friend code.
+ */
+export const sendInvite = async (senderId, receiverCode) => {
+    const receiver = await getUserByFriendCode(receiverCode);
+    if (!receiver) {
+        throw new Error("Invalid friend code.");
     }
 
-    // Use a transaction to ensure both directions are created
+    if (senderId === receiver.id) {
+        throw new Error("You cannot invite yourself.");
+    }
+
+    // Check if already friends
+    const existingFollow = await prisma.follows.findUnique({
+        where: { followerId_followingId: { followerId: senderId, followingId: receiver.id } }
+    });
+    if (existingFollow) {
+        throw new Error("You are already friends with this user.");
+    }
+
+    // Create the invite
+    return prisma.friendInvite.create({
+        data: {
+            senderId,
+            receiverId: receiver.id,
+            status: "PENDING"
+        }
+    });
+};
+
+/**
+ * Accept a friend invite and establish mutual friendship.
+ */
+export const acceptInvite = async (inviteId, userId) => {
+    const invite = await prisma.friendInvite.findUnique({
+        where: { id: inviteId }
+    });
+
+    if (!invite || invite.receiverId !== userId || invite.status !== "PENDING") {
+        throw new Error("Invalid or expired invite.");
+    }
+
+    // Use a transaction to:
+    // 1. Mark invite as ACCEPTED
+    // 2. Create mutual follow records
     return prisma.$transaction([
-        prisma.follows.upsert({
-            where: { followerId_followingId: { followerId, followingId } },
-            update: {},
-            create: { followerId, followingId }
+        prisma.friendInvite.update({
+            where: { id: inviteId },
+            data: { status: "ACCEPTED" }
         }),
         prisma.follows.upsert({
-            where: { followerId_followingId: { followerId: followingId, followingId: followerId } },
+            where: { followerId_followingId: { followerId: invite.senderId, followingId: invite.receiverId } },
             update: {},
-            create: { followerId: followingId, followingId: followerId }
+            create: { followerId: invite.senderId, followingId: invite.receiverId }
+        }),
+        prisma.follows.upsert({
+            where: { followerId_followingId: { followerId: invite.receiverId, followingId: invite.senderId } },
+            update: {},
+            create: { followerId: invite.receiverId, followingId: invite.senderId }
         })
     ]);
 };
 
 /**
- * Unfollow a user (Mutual)
+ * Decline a friend invite.
  */
-export const unfollowUser = async (followerId, followingId) => {
-    return prisma.$transaction([
-        prisma.follows.deleteMany({
-            where: {
-                OR: [
-                    { followerId, followingId },
-                    { followerId: followingId, followingId: followerId }
-                ]
-            }
-        })
-    ]);
+export const declineInvite = async (inviteId, userId) => {
+    return prisma.friendInvite.updateMany({
+        where: { 
+            id: inviteId,
+            receiverId: userId,
+            status: "PENDING"
+        },
+        data: { status: "DECLINED" }
+    });
 };
 
 /**
- * Get users following this user
+ * Get all pending invites for a user.
+ */
+export const getPendingInvites = async (userId) => {
+    return prisma.friendInvite.findMany({
+        where: { 
+            receiverId: userId,
+            status: "PENDING"
+        },
+        include: {
+            sender: {
+                select: {
+                    id: true,
+                    name: true
+                }
+            }
+        }
+    });
+};
+
+/**
+ * Get users following this user (Friends)
  */
 export const getFollowers = async (userId) => {
     return prisma.follows.findMany({
@@ -58,7 +135,7 @@ export const getFollowers = async (userId) => {
 };
 
 /**
- * Get users this user is following
+ * Get users this user is following (Friends)
  */
 export const getFollowing = async (userId) => {
     return prisma.follows.findMany({
@@ -76,21 +153,17 @@ export const getFollowing = async (userId) => {
 };
 
 /**
- * Search for users by name or email
+ * Unfollow a user (Mutual)
  */
-export const searchUsers = async (query) => {
-    return prisma.user.findMany({
-        where: {
-            OR: [
-                { name: { contains: query, mode: "insensitive" } },
-                { email: { contains: query, mode: "insensitive" } }
-            ]
-        },
-        select: {
-            id: true,
-            name: true,
-            email: true
-        },
-        take: 10
-    });
+export const unfollowUser = async (followerId, followingId) => {
+    return prisma.$transaction([
+        prisma.follows.deleteMany({
+            where: {
+                OR: [
+                    { followerId, followingId },
+                    { followerId: followingId, followingId: followerId }
+                ]
+            }
+        })
+    ]);
 };

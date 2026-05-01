@@ -10,6 +10,10 @@ dotenv.config();
  * Using the @prisma/adapter-pg for maximum efficiency and modern Prisma 7 support.
  */
 const connectionString = process.env.DATABASE_URL;
+if(connectionString.includes("localhost")) {
+    console.log("attempting prisma connection to localhost")
+} else console.log("attempting prisma connection to hosted DB");
+
 
 const pool = new pg.Pool({ connectionString });
 const adapter = new PrismaPg(pool);
