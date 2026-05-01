@@ -3,44 +3,48 @@ import { useNavigate } from 'react-router-dom';
 import { fetchAllQuestions } from '../api/api.js';
 import { useAuth } from '../context/AuthContext';
 
+/* ── Difficulty metadata ── */
 const DIFFICULTY_META = {
-  EASY:   { label: 'Easy',   color: '#16a34a', bg: '#dcfce7', border: '#bbf7d0' },
-  MEDIUM: { label: 'Medium', color: '#d97706', bg: '#fef3c7', border: '#fde68a' },
-  HARD:   { label: 'Hard',   color: '#dc2626', bg: '#fee2e2', border: '#fecaca' },
+  EASY:   { label: 'Easy',   cls: 'badge-easy' },
+  MEDIUM: { label: 'Medium', cls: 'badge-medium' },
+  HARD:   { label: 'Hard',   cls: 'badge-hard' },
 };
 
+/* ── Difficulty badge ── */
 function DiffBadge({ difficulty }) {
   const m = DIFFICULTY_META[difficulty] || DIFFICULTY_META.EASY;
-  return (
-    <span style={{
-      display: 'inline-block',
-      padding: '3px 10px',
-      borderRadius: 99,
-      fontSize: '0.72rem',
-      fontWeight: 700,
-      background: m.bg,
-      color: m.color,
-      border: `1px solid ${m.border}`,
-    }}>
-      {m.label}
-    </span>
-  );
+  return <span className={`badge ${m.cls}`}>{m.label}</span>;
 }
 
+/* ── Skeleton row ── */
 function SkeletonRow() {
   return (
     <tr>
-      {[60, 260, 90, 80].map((w, i) => (
+      {[44, 44, 280, 80, 60].map((w, i) => (
         <td key={i} style={{ padding: '14px 20px' }}>
-          <div style={{
-            height: 14, width: w, borderRadius: 6,
-            background: 'linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)',
-            backgroundSize: '400px 100%',
-            animation: 'shimmer 1.4s ease infinite',
-          }} />
+          <div className="skeleton" style={{ height: 13, width: w }} />
         </td>
       ))}
     </tr>
+  );
+}
+
+/* ── Filter pill button ── */
+function FilterPill({ active, children, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '5px 13px', borderRadius: 6, border: 'none', cursor: 'pointer',
+        fontSize: '0.78rem', fontWeight: 600,
+        background: active ? 'var(--bg-content)' : 'transparent',
+        color: active ? 'var(--text-primary)' : 'var(--text-muted)',
+        boxShadow: active ? 'var(--shadow-xs)' : 'none',
+        transition: 'all 0.14s',
+      }}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -48,8 +52,8 @@ export default function Home() {
   const { token } = useAuth();
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading]     = useState(true);
-  const [filter, setFilter]       = useState('ALL'); // Difficulty: ALL, EASY, MEDIUM, HARD
-  const [statusFilter, setStatusFilter] = useState('ALL'); // Status: ALL, SOLVED, UNSOLVED
+  const [filter, setFilter]       = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [search, setSearch]       = useState('');
   const [hoveredId, setHoveredId] = useState(null);
   const navigate = useNavigate();
@@ -57,9 +61,9 @@ export default function Home() {
   useEffect(() => {
     if (token) {
       fetchAllQuestions(token)
-        .then(data => { 
-          setQuestions(Array.isArray(data) ? data : []); 
-          setLoading(false); 
+        .then(data => {
+          setQuestions(Array.isArray(data) ? data : []);
+          setLoading(false);
         })
         .catch(() => {
           setQuestions([]);
@@ -70,107 +74,88 @@ export default function Home() {
 
   const difficulties = ['ALL', 'EASY', 'MEDIUM', 'HARD'];
   const statuses = ['ALL', 'SOLVED', 'UNSOLVED'];
-
   const safeQuestions = Array.isArray(questions) ? questions : [];
 
   const filtered = safeQuestions.filter(q => {
     const matchDiff = filter === 'ALL' || q.difficulty === filter;
     const matchSearch = q.title.toLowerCase().includes(search.toLowerCase());
-    
     const progress = q.progress && q.progress[0];
     const isSolved = progress?.isCompleted;
-    
     let matchStatus = true;
     if (statusFilter === 'SOLVED') matchStatus = isSolved;
     if (statusFilter === 'UNSOLVED') matchStatus = !isSolved;
-
     return matchDiff && matchSearch && matchStatus;
   });
 
   const counts = {
-    ALL:    safeQuestions.length,
-    EASY:   safeQuestions.filter(q => q.difficulty === 'EASY').length,
-    MEDIUM: safeQuestions.filter(q => q.difficulty === 'MEDIUM').length,
-    HARD:   safeQuestions.filter(q => q.difficulty === 'HARD').length,
-    SOLVED: safeQuestions.filter(q => q.progress && q.progress[0]?.isCompleted).length,
+    ALL:      safeQuestions.length,
+    EASY:     safeQuestions.filter(q => q.difficulty === 'EASY').length,
+    MEDIUM:   safeQuestions.filter(q => q.difficulty === 'MEDIUM').length,
+    HARD:     safeQuestions.filter(q => q.difficulty === 'HARD').length,
+    SOLVED:   safeQuestions.filter(q => q.progress && q.progress[0]?.isCompleted).length,
     UNSOLVED: safeQuestions.filter(q => !q.progress || !q.progress[0]?.isCompleted).length,
   };
 
   return (
-    <div style={{ paddingLeft:20, paddingTop: 5, maxWidth: 900 }}>
+    <div style={{ padding: '28px 28px 28px 28px', maxWidth: 940 }}>
 
       {/* Page header */}
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)',
-          letterSpacing: '-0.02em', marginBottom: 4 }}>
+        <h1 style={{
+          fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-primary)',
+          letterSpacing: '-0.01em', marginBottom: 4,
+        }}>
           Problem Set
         </h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-          Solve SQL challenges to sharpen your skills and climb the leaderboard.
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+          Solve SQL challenges to sharpen your skills.
         </p>
       </div>
 
-      {/* Toolbar: filter tabs + search */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-
-        {/* Filters Container */}
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          {/* Difficulty tabs */}
-          <div style={{ display: 'flex', gap: 4, background: 'var(--bg-app)',
-            border: '1px solid var(--border)', borderRadius: 10, padding: 4 }}>
-            {difficulties.map(d => {
-              const active = filter === d;
-              const meta = DIFFICULTY_META[d];
-              return (
-                <button key={d} onClick={() => setFilter(d)} style={{
-                  padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer',
-                  fontSize: '0.78rem', fontWeight: 600,
-                  background: active ? 'white' : 'transparent',
-                  color: active
-                    ? (meta ? meta.color : 'var(--text-primary)')
-                    : 'var(--text-muted)',
-                  boxShadow: active ? 'var(--shadow-sm)' : 'none',
-                  transition: 'all 0.15s',
-                }}>
-                  {d === 'ALL' ? 'All' : DIFFICULTY_META[d].label}
-                  <span style={{ marginLeft: 5, opacity: 0.65, fontWeight: 500 }}>
-                    {counts[d]}
-                  </span>
-                </button>
-              );
-            })}
+      {/* Toolbar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexWrap: 'wrap', gap: 10, marginBottom: 16,
+      }}>
+        {/* Filter groups */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {/* Difficulty filter */}
+          <div style={{
+            display: 'flex', gap: 2, background: 'var(--bg-app)',
+            border: '1px solid var(--border)', borderRadius: 8, padding: 3,
+          }}>
+            {difficulties.map(d => (
+              <FilterPill key={d} active={filter === d} onClick={() => setFilter(d)}>
+                {d === 'ALL' ? 'All' : DIFFICULTY_META[d].label}
+                <span style={{ marginLeft: 5, opacity: 0.55, fontWeight: 500 }}>
+                  {counts[d]}
+                </span>
+              </FilterPill>
+            ))}
           </div>
 
-          {/* Status tabs */}
-          <div style={{ display: 'flex', gap: 4, background: 'var(--bg-app)',
-            border: '1px solid var(--border)', borderRadius: 10, padding: 4 }}>
-            {statuses.map(s => {
-              const active = statusFilter === s;
-              return (
-                <button key={s} onClick={() => setStatusFilter(s)} style={{
-                  padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer',
-                  fontSize: '0.78rem', fontWeight: 600,
-                  background: active ? 'white' : 'transparent',
-                  color: active ? 'var(--accent)' : 'var(--text-muted)',
-                  boxShadow: active ? 'var(--shadow-sm)' : 'none',
-                  transition: 'all 0.15s',
-                }}>
-                  {s === 'ALL' ? 'Everything' : s.charAt(0) + s.slice(1).toLowerCase()}
-                  <span style={{ marginLeft: 5, opacity: 0.65, fontWeight: 500 }}>
-                    {counts[s]}
-                  </span>
-                </button>
-              );
-            })}
+          {/* Status filter */}
+          <div style={{
+            display: 'flex', gap: 2, background: 'var(--bg-app)',
+            border: '1px solid var(--border)', borderRadius: 8, padding: 3,
+          }}>
+            {statuses.map(s => (
+              <FilterPill key={s} active={statusFilter === s} onClick={() => setStatusFilter(s)}>
+                {s === 'ALL' ? 'Everything' : s.charAt(0) + s.slice(1).toLowerCase()}
+                <span style={{ marginLeft: 5, opacity: 0.55, fontWeight: 500 }}>
+                  {counts[s]}
+                </span>
+              </FilterPill>
+            ))}
           </div>
         </div>
 
         {/* Search */}
         <div style={{ position: 'relative' }}>
-          <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-            color: 'var(--text-muted)', pointerEvents: 'none' }}
-            width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }}
+            width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          >
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
           <input
@@ -179,14 +164,14 @@ export default function Home() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{
-              paddingLeft: 32, paddingRight: 14, paddingTop: 8, paddingBottom: 8,
-              border: '1px solid var(--border)', borderRadius: 8, outline: 'none',
+              paddingLeft: 32, paddingRight: 14, paddingTop: 7, paddingBottom: 7,
+              border: '1px solid var(--border)', borderRadius: 7, outline: 'none',
               fontSize: '0.82rem', color: 'var(--text-primary)',
-              background: 'white', width: 200,
+              background: 'var(--bg-content)', width: 210,
               transition: 'border-color 0.15s, box-shadow 0.15s',
               fontFamily: 'var(--font-sans)',
             }}
-            onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)'; }}
+            onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-light)'; }}
             onBlur={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none'; }}
           />
         </div>
@@ -194,27 +179,28 @@ export default function Home() {
 
       {/* Table */}
       <div style={{
-        background: 'white', border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-md)', overflow: 'hidden',
+        background: 'var(--bg-content)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-md)',
+        overflow: 'hidden',
         boxShadow: 'var(--shadow-sm)',
       }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
           <thead>
-            <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border)' }}>
-              <th style={thStyle({ width: 40 })}>Status</th>
-              <th style={thStyle({ width: 60 })}>#</th>
+            <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
+              <th style={thStyle({ width: 44 })}>Status</th>
+              <th style={thStyle({ width: 50 })}>#</th>
               <th style={thStyle({ textAlign: 'left' })}>Title</th>
               <th style={thStyle({ width: 110 })}>Difficulty</th>
-              <th style={thStyle({ width: 90 })}></th>
+              <th style={thStyle({ width: 80 })}></th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
+              Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ padding: '48px 20px', textAlign: 'center',
-                  color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                <td colSpan={5} style={{ padding: '52px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                   {search ? `No problems match "${search}"` : 'No problems available yet.'}
                 </td>
               </tr>
@@ -233,41 +219,46 @@ export default function Home() {
                     onMouseLeave={() => setHoveredId(null)}
                     style={{
                       borderBottom: idx < filtered.length - 1 ? '1px solid var(--border)' : 'none',
-                      background: isHovered ? '#f5f7ff' : (idx % 2 === 0 ? 'white' : '#fafbfc'),
+                      background: isHovered ? 'var(--accent-light)' : 'var(--bg-content)',
                       cursor: 'pointer',
                       transition: 'background 0.12s',
                     }}
                   >
-                    {/* Status */}
+                    {/* Status indicator */}
                     <td style={{ padding: '14px 20px', textAlign: 'center' }}>
                       {isSolved ? (
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="20 6 9 17 4 12"/>
                         </svg>
                       ) : isAttempted ? (
-                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#f59e0b', margin: '0 auto', boxShadow: '0 0 4px #f59e0b' }} />
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--warning)', margin: '0 auto' }} />
                       ) : null}
                     </td>
 
-                    {/* Index */}
-                    <td style={{ padding: '14px 20px', textAlign: 'center',
-                      fontFamily: 'var(--font-mono)', fontSize: '0.78rem',
-                      color: 'var(--text-muted)', fontWeight: 500 }}>
+                    {/* Row index */}
+                    <td style={{
+                      padding: '14px 20px', textAlign: 'center',
+                      fontFamily: 'var(--font-mono)', fontSize: '0.75rem',
+                      color: 'var(--text-muted)', fontWeight: 500,
+                    }}>
                       {String(idx + 1).padStart(2, '0')}
                     </td>
 
                     {/* Title */}
                     <td style={{ padding: '14px 20px' }}>
                       <span style={{
-                        fontWeight: 600, color: isHovered ? 'var(--accent)' : 'var(--text-primary)',
+                        fontWeight: 600,
+                        color: isHovered ? 'var(--accent)' : 'var(--text-primary)',
                         transition: 'color 0.12s',
                       }}>
                         {q.title}
                       </span>
                       {q.description && (
-                        <p style={{ marginTop: 2, fontSize: '0.76rem', color: 'var(--text-muted)',
+                        <p style={{
+                          marginTop: 2, fontSize: '0.75rem', color: 'var(--text-muted)',
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          maxWidth: 420 }}>
+                          maxWidth: 400,
+                        }}>
                           {q.description}
                         </p>
                       )}
@@ -278,7 +269,7 @@ export default function Home() {
                       <DiffBadge difficulty={q.difficulty} />
                     </td>
 
-                    {/* Action */}
+                    {/* Action arrow */}
                     <td style={{ padding: '14px 20px', textAlign: 'center' }}>
                       <span style={{
                         fontSize: '0.75rem', fontWeight: 600,
@@ -288,10 +279,8 @@ export default function Home() {
                         transform: isHovered ? 'translateX(2px)' : 'none',
                       }}>
                         Solve
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                          stroke="currentColor" strokeWidth="2.5">
-                          <line x1="5" y1="12" x2="19" y2="12"/>
-                          <polyline points="12 5 19 12 12 19"/>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                         </svg>
                       </span>
                     </td>
@@ -302,21 +291,20 @@ export default function Home() {
           </tbody>
         </table>
 
-        {/* Table footer */}
+        {/* Footer row */}
         {!loading && filtered.length > 0 && (
-          <div style={{ padding: '10px 20px', borderTop: '1px solid var(--border)',
-            background: '#f8fafc', display: 'flex', alignItems: 'center',
-            justifyContent: 'space-between' }}>
+          <div style={{
+            padding: '9px 20px', borderTop: '1px solid var(--border)',
+            background: 'var(--bg-subtle)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               Showing {filtered.length} of {safeQuestions.length} problem{safeQuestions.length !== 1 ? 's' : ''}
             </span>
-            <div style={{ display: 'flex', gap: 16 }}>
-              {['EASY', 'MEDIUM', 'HARD'].map(d => (
-                <span key={d} style={{ fontSize: '0.72rem', fontWeight: 600,
-                  color: DIFFICULTY_META[d].color }}>
-                  {counts[d]} {DIFFICULTY_META[d].label}
-                </span>
-              ))}
+            <div style={{ display: 'flex', gap: 14 }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--success)' }}>{counts.EASY} Easy</span>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--warning)' }}>{counts.MEDIUM} Medium</span>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--danger)' }}>{counts.HARD} Hard</span>
             </div>
           </div>
         )}
@@ -327,9 +315,9 @@ export default function Home() {
 
 function thStyle(extra = {}) {
   return {
-    padding: '11px 20px',
+    padding: '10px 20px',
     fontSize: '0.68rem', fontWeight: 700,
-    textTransform: 'uppercase', letterSpacing: '0.09em',
+    textTransform: 'uppercase', letterSpacing: '0.07em',
     color: 'var(--text-muted)', textAlign: 'center',
     whiteSpace: 'nowrap',
     ...extra,

@@ -1,60 +1,68 @@
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 /* ============================================================
-   LURNER — "Studio" Design System
-   Dark indigo sidebar + warm white content area
+   LURNER — Refined Light Design System
+   Clean, soft, professional dashboard aesthetic
    ============================================================ */
 
 :root {
   /* — Backgrounds — */
-  --bg-app:         #f1f5f9;   /* slate-100: outer shell */
-  --bg-content:     #ffffff;   /* white: cards, panels */
-  --bg-sidebar:     #1e1b4b;   /* indigo-950: left rail */
-  --bg-sidebar-hover: rgba(255,255,255,0.08);
-  --bg-sidebar-active: rgba(255,255,255,0.12);
-  --bg-header:      #ffffff;
+  --bg-app:         #f5f6f8;   /* Soft neutral shell */
+  --bg-content:     #ffffff;   /* White cards & panels */
+  --bg-sidebar:     #1c2333;   /* Deep navy sidebar (not purple) */
+  --bg-subtle:      #f9fafb;   /* Subtly off-white for table stripes */
 
   /* — Accents — */
-  --accent:         #6366f1;   /* indigo-500 */
-  --accent-dark:    #4f46e5;   /* indigo-600 */
-  --accent-light:   #e0e7ff;   /* indigo-100 */
-  --accent-glow:    rgba(99, 102, 241, 0.15);
+  --accent:         #4f6ef7;   /* Calm, muted blue-indigo */
+  --accent-hover:   #3d5ce6;
+  --accent-light:   #eef1fe;   /* Tinted bg for accent elements */
+  --accent-border:  #c7d2fd;   /* Accent-tinted border */
 
   /* — Text — */
-  --text-primary:   #0f172a;   /* slate-900 */
-  --text-secondary: #64748b;   /* slate-500 */
-  --text-muted:     #94a3b8;   /* slate-400 */
-  --text-on-dark:   #ffffff;
-  --text-on-sidebar:#c7d2fe;   /* indigo-200 */
+  --text-primary:   #111827;   /* Near-black, not pure black */
+  --text-secondary: #4b5563;   /* Gray-600 */
+  --text-muted:     #9ca3af;   /* Gray-400 */
+  --text-sidebar:   #c9d1e0;   /* Soft blue-gray for sidebar text */
+  --text-on-accent: #ffffff;
 
   /* — Borders — */
-  --border:         #e2e8f0;   /* slate-200 */
-  --border-strong:  #cbd5e1;   /* slate-300 */
+  --border:         #e5e7eb;   /* Gray-200 */
+  --border-strong:  #d1d5db;   /* Gray-300 */
 
   /* — Semantic — */
-  --success:        #10b981;   /* emerald-500 */
-  --success-bg:     #d1fae5;   /* emerald-100 */
-  --warning:        #f59e0b;   /* amber-500 */
-  --warning-bg:     #fef3c7;   /* amber-100 */
-  --danger:         #ef4444;   /* red-500 */
-  --danger-bg:      #fee2e2;   /* red-100 */
+  --success:        #16a34a;
+  --success-bg:     #f0fdf4;
+  --success-border: #bbf7d0;
+  --warning:        #d97706;
+  --warning-bg:     #fffbeb;
+  --warning-border: #fde68a;
+  --danger:         #dc2626;
+  --danger-bg:      #fef2f2;
+  --danger-border:  #fecaca;
+  --info:           #0369a1;
+  --info-bg:        #f0f9ff;
+  --info-border:    #bae6fd;
 
-  /* — Shadows — */
-  --shadow-sm:      0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
-  --shadow-md:      0 4px 12px rgba(15,23,42,0.08), 0 2px 6px rgba(15,23,42,0.05);
-  --shadow-lg:      0 10px 30px rgba(15,23,42,0.12), 0 4px 12px rgba(15,23,42,0.06);
-  --shadow-accent:  0 4px 16px rgba(99,102,241,0.25);
+  /* — Shadows — (restrained, not heavy) */
+  --shadow-xs:      0 1px 2px rgba(17, 24, 39, 0.05);
+  --shadow-sm:      0 1px 4px rgba(17, 24, 39, 0.07), 0 1px 2px rgba(17, 24, 39, 0.04);
+  --shadow-md:      0 4px 12px rgba(17, 24, 39, 0.08);
 
   /* — Typography — */
-  --font-sans:      'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono:      'JetBrains Mono', 'Fira Code', monospace;
+  --font-sans:      'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono:      'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
 
-  /* — Sizing — */
-  --sidebar-w:      240px;
-  --header-h:       60px;
-  --radius-sm:      8px;
-  --radius-md:      12px;
-  --radius-lg:      16px;
+  /* — Layout — */
+  --sidebar-w:      220px;
+  --friends-w:      288px;
+
+  /* — Border Radius — */
+  --radius-sm:      6px;
+  --radius-md:      10px;
+  --radius-lg:      14px;
+
+  /* — Transitions — */
+  --transition-fast: all 0.15s ease;
 }
 
 /* ============================================================
@@ -113,6 +121,15 @@ code, pre, kbd, .mono {
   box-shadow: var(--shadow-sm);
 }
 
+/* Section headers inside cards */
+.section-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
@@ -124,26 +141,26 @@ code, pre, kbd, .mono {
   font-size: 0.875rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: var(--transition-fast);
   border: none;
   outline: none;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .btn-primary {
-  background: var(--accent-dark);
-  color: white;
-  padding: 10px 20px;
-  box-shadow: var(--shadow-accent);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  padding: 9px 20px;
 }
 .btn-primary:hover {
-  background: var(--accent);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(99,102,241,0.35);
+  background: var(--accent-hover);
 }
-.btn-primary:active { transform: translateY(0); }
+.btn-primary:active {
+  transform: scale(0.99);
+}
 .btn-primary:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
   transform: none;
 }
@@ -151,11 +168,11 @@ code, pre, kbd, .mono {
 .btn-ghost {
   background: transparent;
   color: var(--text-secondary);
-  padding: 10px 20px;
+  padding: 9px 18px;
   border: 1px solid var(--border);
 }
 .btn-ghost:hover {
-  background: var(--bg-app);
+  background: var(--bg-subtle);
   border-color: var(--border-strong);
   color: var(--text-primary);
 }
@@ -164,25 +181,23 @@ code, pre, kbd, .mono {
   background: transparent;
   color: var(--danger);
   padding: 6px 14px;
-  border: 1px solid rgba(239,68,68,0.2);
+  border: 1px solid var(--danger-border);
   font-size: 0.75rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-weight: 600;
 }
 .btn-danger-ghost:hover {
-  background: rgba(239,68,68,0.05);
-  border-color: var(--danger);
+  background: var(--danger-bg);
 }
 
 /* Form inputs */
 .input {
   width: 100%;
-  background: var(--bg-app);
+  background: var(--bg-content);
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 11px 16px;
+  padding: 10px 14px;
   font-family: var(--font-sans);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   color: var(--text-primary);
   transition: border-color 0.15s, box-shadow 0.15s;
   outline: none;
@@ -192,49 +207,49 @@ code, pre, kbd, .mono {
 }
 .input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-glow);
-  background: white;
+  box-shadow: 0 0 0 3px var(--accent-light);
 }
 
 .input-label {
   display: block;
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
   margin-bottom: 6px;
+  letter-spacing: 0.01em;
 }
 
 /* Difficulty badges */
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 3px 10px;
-  border-radius: 99px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  padding: 2px 9px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 .badge-easy {
   background: var(--success-bg);
-  color: #059669;
+  color: var(--success);
+  border: 1px solid var(--success-border);
 }
 .badge-medium {
   background: var(--warning-bg);
-  color: #d97706;
+  color: var(--warning);
+  border: 1px solid var(--warning-border);
 }
 .badge-hard {
   background: var(--danger-bg);
-  color: #dc2626;
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
 }
 
 /* Spinner */
 .spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255,255,255,0.3);
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
   border-top-color: white;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
@@ -243,25 +258,27 @@ code, pre, kbd, .mono {
 
 /* Fade-in animation */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 .fade-up {
-  animation: fadeUp 0.35s ease forwards;
+  animation: fadeUp 0.3s ease forwards;
 }
 
 /* Toast slide-in */
 @keyframes toastIn {
-  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-@keyframes toastOut {
-  from { opacity: 1; transform: translateY(0) scale(1); }
-  to   { opacity: 0; transform: translateY(-10px) scale(0.95); }
-}
 
+/* Shimmer skeleton */
 @keyframes shimmer {
-  0%   { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
+  0%   { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
 }
-
+.skeleton {
+  background: linear-gradient(90deg, #f1f3f5 25%, #e8eaed 50%, #f1f3f5 75%);
+  background-size: 600px 100%;
+  animation: shimmer 1.5s ease infinite;
+  border-radius: 4px;
+}
