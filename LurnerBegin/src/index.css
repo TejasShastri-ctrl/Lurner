@@ -9,7 +9,7 @@
   /* — Backgrounds — */
   --bg-app:         #f5f6f8;   /* Soft neutral shell */
   --bg-content:     #ffffff;   /* White cards & panels */
-  --bg-sidebar:     #1c2333;   /* Deep navy sidebar (not purple) */
+  --bg-sidebar:     #111d13;   /* was 1c2333 originally*/
   --bg-subtle:      #f9fafb;   /* Subtly off-white for table stripes */
 
   /* — Accents — */

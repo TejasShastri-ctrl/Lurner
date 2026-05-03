@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, replace } from "react-router-dom";
 import { useEffect, useState, useCallback } from "react";
 import Editor from "@monaco-editor/react";
 import { fetchQueById, submitSolution, executeSql, fetchHistory } from "./api/api";
@@ -79,6 +79,7 @@ export function SqlExecutionWindow() {
   const [executionTimeMs, setExecutionTimeMs] = useState(0);
   const [loading, setLoading]          = useState(true);
   const [activeTab, setActiveTab]      = useState('result');
+  const [diagnostic, setDiagnostic]    = useState(null);
   const [sessionId]                    = useState(() => crypto.randomUUID?.() || Math.random().toString(36).substring(2, 15));
 
   const loadHistory = useCallback(async () => {
@@ -98,7 +99,7 @@ export function SqlExecutionWindow() {
   }, [id, token, loadHistory]);
 
   const handleExecute = async () => {
-    if (!isAuthenticated) { add('info', 'Sign in required', 'Please sign in to run queries.'); return navigate('/login'); }
+    if (!isAuthenticated) { add('info', 'Sign in required', 'Please sign in to run queries.'); return navigate('/login', { replace: true }); }
     setExecuting(true); setErrorMessage(null); setResults([]);
     const start = performance.now();
     try {
@@ -109,6 +110,8 @@ export function SqlExecutionWindow() {
         add('error', 'Query Error', data.errorMessage.substring(0, 80));
       } else {
         setResults(Array.isArray(data.results) ? data.results : []);
+        console.log('returned result : ', data.results);
+        console.log('expected result : ', question.expectedOutput);
         setActiveTab('result');
       }
       loadHistory();
@@ -124,8 +127,15 @@ export function SqlExecutionWindow() {
     if (!isAuthenticated) { add('info', 'Sign in required', 'Please sign in to submit.'); return navigate('/login'); }
     try {
       const data = await submitSolution(query, id, token, sessionId);
-      if (data.isCorrect) add('success', 'Correct!', "You've solved this challenge.");
-      else add('error', 'Not quite', "The output doesn't match the expected result.");
+      setDiagnostic(data.diagnostic);
+      
+      if (data.isCorrect) {
+        add('success', 'Correct!', "You've solved this challenge.");
+      } else {
+        const hint = data.diagnostic?.mismatches?.[0]?.message || "The output doesn't match the expected result.";
+        add('error', 'Not quite', hint);
+        if (data.diagnostic?.mismatches?.length > 0) setActiveTab('analysis');
+      }
       loadHistory();
     } catch { add('error', 'Submit failed', 'Please try again.'); }
   };
@@ -315,8 +325,11 @@ export function SqlExecutionWindow() {
               }}>
                 <TabButton active={activeTab === 'result'}   onClick={() => setActiveTab('result')}>Output</TabButton>
                 <TabButton active={activeTab === 'expected'} onClick={() => setActiveTab('expected')}>Expected</TabButton>
-                <TabButton active={activeTab === 'history'}  onClick={() => setActiveTab('history')}>
+                 <TabButton active={activeTab === 'history'}  onClick={() => setActiveTab('history')}>
                   History {history.length > 0 && `(${history.length})`}
+                </TabButton>
+                <TabButton active={activeTab === 'analysis'} onClick={() => setActiveTab('analysis')}>
+                  Analysis {diagnostic?.mismatches?.length > 0 && `(${diagnostic.mismatches.length})`}
                 </TabButton>
                 <div style={{ flex: 1 }} />
                 {results.length > 0 && activeTab === 'result' && (
@@ -338,6 +351,7 @@ export function SqlExecutionWindow() {
               <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
                 {activeTab === 'result'   && <DataGrid data={results} error={errorMessage} />}
                 {activeTab === 'expected' && <DataGrid data={question.expectedOutput} />}
+                {activeTab === 'analysis' && <DiagnosticReport data={diagnostic} />}
                 {activeTab === 'history'  && (
                   <div style={{ padding: '14px' }}>
                     {history.length === 0 ? (
@@ -538,4 +552,96 @@ function gridThStyle(extra = {}) {
     whiteSpace: 'nowrap',
     ...extra,
   };
+}
+
+/* ── Diagnostic Report ── */
+function DiagnosticReport({ data }) {
+  if (!data) {
+    return (
+      <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)', fontSize: '0.84rem' }}>
+        No analysis data available. Submit a solution to see structural feedback.
+      </div>
+    );
+  }
+
+  if (data.error) {
+    return (
+      <div style={{ padding: 20, color: 'var(--danger)', fontSize: '0.82rem' }}>
+        <strong>Analysis Error:</strong> {data.error}
+      </div>
+    );
+  }
+
+  const mismatches = data.mismatches || [];
+
+  return (
+    <div style={{ padding: '16px' }}>
+      <h3 style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        Structural SQL Diagnosis
+      </h3>
+
+      {mismatches.length === 0 ? (
+        <div style={{ 
+          padding: '16px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', 
+          borderRadius: 8, color: 'var(--success)', fontSize: '0.84rem', display: 'flex', gap: 10
+        }}>
+          <span>✅</span>
+          <div>
+            <div style={{ fontWeight: 700 }}>Structure matches perfectly!</div>
+            <div style={{ fontSize: '0.78rem', opacity: 0.8, marginTop: 2 }}>The structural skeleton of your query matches the solution. If your output is still wrong, check your data values or join conditions.</div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {mismatches.map((m, i) => (
+            <div key={i} style={{
+              padding: '12px 14px',
+              background: m.severity === 'HIGH' ? 'var(--danger-bg)' : m.severity === 'MEDIUM' ? 'var(--warning-bg)' : 'var(--info-bg)',
+              border: `1px solid ${m.severity === 'HIGH' ? 'var(--danger-border)' : m.severity === 'MEDIUM' ? 'var(--warning-border)' : 'var(--info-border)'}`,
+              borderRadius: 8,
+              display: 'flex', gap: 12
+            }}>
+              <span style={{ fontSize: '1rem' }}>
+                {m.severity === 'HIGH' ? '🚨' : m.severity === 'MEDIUM' ? '⚠️' : '💡'}
+              </span>
+              <div>
+                <div style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', marginBottom: 2 }}>
+                  {m.type.replace(/_/g, ' ')} • {m.severity}
+                </div>
+                <div style={{ fontSize: '0.84rem', color: 'var(--text-primary)', fontWeight: 500, lineHeight: 1.4 }}>
+                  {m.message}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Detail breakdown (Debug/Advanced) */}
+      <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+        <details>
+          <summary style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', cursor: 'pointer', outline: 'none' }}>
+            View Structural Comparison (AST Skeleton)
+          </summary>
+          <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: 4 }}>YOUR QUERY</div>
+              <pre style={{ fontSize: '0.7rem', background: 'var(--bg-subtle)', padding: 10, borderRadius: 6, overflow: 'auto' }}>
+                {JSON.stringify(data.userSkeleton, null, 2)}
+              </pre>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: 4 }}>SOLUTION</div>
+              <pre style={{ fontSize: '0.7rem', background: 'var(--bg-subtle)', padding: 10, borderRadius: 6, overflow: 'auto' }}>
+                {JSON.stringify(data.solutionSkeleton, null, 2)}
+              </pre>
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+  );
 }
