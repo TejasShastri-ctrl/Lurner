@@ -29,6 +29,7 @@ model Question {
   difficulty   Difficulty
   initSql      String   @db.Text
   dbTableName  String?  // The primary table used in this challenge (for preview)
+  solutionSql  String?  @db.Text
   expectedOutput Json
   createdAt    DateTime @default(now())
   submissions  Submission[]

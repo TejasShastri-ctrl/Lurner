@@ -61,6 +61,7 @@ export const listQuestions = async (req, res) => {
 export const getQuestionDetails = async (req, res) => {
     try {
         const question = await questionService.getQuestionById(req.params.id);
+        console.log('getquestionbyid endpoint hit : ', question);
         if (!question) return res.status(404).json({ error: "Question not found" });
         
         let schemaSample = null;

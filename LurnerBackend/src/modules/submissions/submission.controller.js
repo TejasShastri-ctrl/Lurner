@@ -1,7 +1,24 @@
 import * as submissionService from "./submission.service.js";
 import * as questionService from "../questions/question.service.js";
 import { executeSql } from "../../services/execution/SqlEngine.js";
+import { compareQueries } from "../diagnostic/diagnostic.service.js";
 import prisma from "../../config/prisma.js";
+
+const normalizeResult = (data) => {
+    if (!data) return data;
+    const sortObjectKeys = (obj) => {
+        if (typeof obj !== 'object' || obj === null) return obj;
+        if (Array.isArray(obj)) return obj.map(sortObjectKeys);
+        return Object.keys(obj)
+            .sort()
+            .reduce((acc, key) => {
+                acc[key] = sortObjectKeys(obj[key]);
+                return acc;
+            }, {});
+    };
+    return sortObjectKeys(data);
+};
+
 
 
 export const submitHandler = async (req, res) => {
@@ -17,18 +34,42 @@ export const submitHandler = async (req, res) => {
         let isCorrect = false;
         let status = "FAIL";
         let errorMessage = null;
+        let diagnostic = null;
 
         try {
             const execution = await executeSql(question.initSql, sql);
             results = execution.data;
             executionTimeMs = execution.executionTimeMs;
-            isCorrect = JSON.stringify(results) === JSON.stringify(question.expectedOutput);
+            
+            // Normalize both for key-order-insensitive comparison
+            const normalizedResults = normalizeResult(results);
+            const normalizedExpected = normalizeResult(question.expectedOutput);
+            
+            isCorrect = JSON.stringify(normalizedResults) === JSON.stringify(normalizedExpected);
+
+            console.log("NOrmalized result : ", normalizedResults);
+            console.log("NOrmalized expected output : ", normalizedExpected);
+
             status = isCorrect ? "SUCCESS" : "FAIL";
+
+            // Run Diagnostic if incorrect
+            if (!isCorrect && question.solutionSql) {
+                console.log("Running diagnostic for question:", question.id);
+                diagnostic = compareQueries(sql, question.solutionSql);
+                console.log("Diagnostic result:", !!diagnostic);
+            }
         } catch (e) {
             status = "ERROR";
             errorMessage = e.error || e.message;
             executionTimeMs = e.executionTimeMs || 0;
             results = null;
+
+            // Even on syntax error, we can try to provide structural hints if the SQL is partially parseable
+            if (question.solutionSql) {
+                console.log("Running diagnostic on error for question:", question.id);
+                diagnostic = compareQueries(sql, question.solutionSql);
+                console.log("Diagnostic result (error):", !!diagnostic);
+            }
         }
 
         // 1. Save detailed submission (Formal Attempt)
@@ -71,7 +112,8 @@ export const submitHandler = async (req, res) => {
             isCorrect,
             results,
             expectedOutput: question.expectedOutput,
-            executionTimeMs
+            executionTimeMs,
+            diagnostic
         });
     } catch (e) {
         console.error("❌ SQL Submission Error:", e);

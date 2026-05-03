@@ -57,6 +57,7 @@ async function main() {
             tagId: tagMap["SELECT"],
             initSql: empInitSql,
             dbTableName: "employees",
+            solutionSql: "SELECT * FROM employees",
             expectedOutput: [
                 { id: 1, name: "Alice", department: "Engineering", salary: 90000, hire_date: '2023-01-15' },
                 { id: 2, name: "Bob", department: "Sales", salary: 70000, hire_date: '2022-11-20' },
@@ -74,6 +75,7 @@ async function main() {
             tagId: tagMap["FILTERING"],
             initSql: empInitSql,
             dbTableName: "employees",
+            solutionSql: "SELECT * FROM employees WHERE salary > 80000",
             expectedOutput: [
                 { id: 1, name: "Alice", department: "Engineering", salary: 90000, hire_date: '2023-01-15' },
                 { id: 3, name: "Charlie", department: "Engineering", salary: 95000, hire_date: '2023-03-10' },
@@ -87,6 +89,7 @@ async function main() {
             tagId: tagMap["AGGREGATION"],
             initSql: empInitSql,
             dbTableName: "employees",
+            solutionSql: "SELECT SUM(salary) AS total_salary FROM employees WHERE department = 'Engineering'",
             expectedOutput: [{ total_salary: 273000 }]
         },
         {
@@ -96,6 +99,7 @@ async function main() {
             tagId: tagMap["SORTING"],
             initSql: empInitSql,
             dbTableName: "employees",
+            solutionSql: "SELECT * FROM employees WHERE department = 'Sales' ORDER BY salary DESC",
             expectedOutput: [
                 { id: 5, name: "Eve", department: "Sales", salary: 72000, hire_date: '2023-01-20' },
                 { id: 2, name: "Bob", department: "Sales", salary: 70000, hire_date: '2022-11-20' }
@@ -108,6 +112,7 @@ async function main() {
             tagId: tagMap["AGGREGATION"],
             initSql: empInitSql,
             dbTableName: "employees",
+            solutionSql: "SELECT department, AVG(salary) AS avg_salary FROM employees GROUP BY department",
             expectedOutput: [
                 { department: "Engineering", avg_salary: 91000 },
                 { department: "Sales", avg_salary: 71000 },
@@ -121,6 +126,7 @@ async function main() {
             tagId: tagMap["FILTERING"],
             initSql: empInitSql,
             dbTableName: "employees",
+            solutionSql: "SELECT * FROM employees WHERE hire_date > '2023-01-01'",
             expectedOutput: [
                 { id: 1, name: "Alice", department: "Engineering", salary: 90000, hire_date: '2023-01-15' },
                 { id: 3, name: "Charlie", department: "Engineering", salary: 95000, hire_date: '2023-03-10' },
@@ -136,6 +142,7 @@ async function main() {
             tagId: tagMap["AGGREGATION"],
             initSql: empInitSql,
             dbTableName: "employees",
+            solutionSql: "SELECT name, salary FROM employees ORDER BY salary ASC LIMIT 1",
             expectedOutput: [{ name: "David", salary: 65000 }]
         },
         {
@@ -145,6 +152,7 @@ async function main() {
             tagId: tagMap["FILTERING"],
             initSql: empInitSql,
             dbTableName: "employees",
+            solutionSql: "SELECT * FROM employees WHERE name LIKE 'A%'",
             expectedOutput: [{ id: 1, name: "Alice", department: "Engineering", salary: 90000, hire_date: '2023-01-15' }]
         },
         {
@@ -159,6 +167,7 @@ async function main() {
                 INSERT INTO projects (title, emp_id) VALUES ('Lurner API', 1), ('Mobile App', 2), ('Data Sync', 3);
             `,
             dbTableName: "employees",
+            solutionSql: "SELECT e.name, p.title FROM employees e JOIN projects p ON e.id = p.emp_id",
             expectedOutput: [
                 { name: "Alice", title: "Lurner API" },
                 { name: "Bob", title: "Mobile App" },
@@ -172,6 +181,7 @@ async function main() {
             tagId: tagMap["AGGREGATION"],
             initSql: empInitSql,
             dbTableName: "employees",
+            solutionSql: "SELECT department, COUNT(*) as count FROM employees GROUP BY department HAVING COUNT(*) > 2",
             expectedOutput: [{ department: "Engineering", count: 3 }]
         },
         {
@@ -181,6 +191,7 @@ async function main() {
             tagId: tagMap["SORTING"],
             initSql: empInitSql,
             dbTableName: "employees",
+            solutionSql: "SELECT name, salary FROM employees ORDER BY salary DESC",
             expectedOutput: [
                 { name: "Charlie", salary: 95000 },
                 { name: "Alice", salary: 90000 },
@@ -198,6 +209,7 @@ async function main() {
             tagId: tagMap["SELECT"],
             initSql: empInitSql,
             dbTableName: "employees",
+            solutionSql: "SELECT DISTINCT department FROM employees",
             expectedOutput: [
                 { department: "Engineering" },
                 { department: "Sales" },
@@ -211,6 +223,7 @@ async function main() {
             tagId: tagMap["AGGREGATION"],
             initSql: empInitSql,
             dbTableName: "employees",
+            solutionSql: "SELECT COUNT(*) AS total FROM employees",
             expectedOutput: [{ total: 7 }]
         }
     ];
