@@ -1,4 +1,5 @@
 import * as analyticsService from "./analytics.service.js";
+import * as aiService from "./ai.service.js";
 
 /**
  * Controller for handling detailed user analytics requests.
@@ -44,6 +45,27 @@ export const getPerformanceTelemetryHandler = async (req, res) => {
     try {
         const telemetry = await analyticsService.getPerformanceTelemetry(req.user.id);
         res.json(telemetry);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
+export const generateAiReportHandler = async (req, res) => {
+    try {
+        const days = parseInt(req.body.days) || 7;
+        const report = await aiService.generateAiReport(req.user.id, days);
+        res.json(report);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
+export const getAiReportHandler = async (req, res) => {
+    try {
+        const days = parseInt(req.query.days) || 7;
+        const report = await aiService.getLatestReport(req.user.id, days);
+        if (!report) return res.status(404).json({ error: "No report found for this timeframe." });
+        res.json(report);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

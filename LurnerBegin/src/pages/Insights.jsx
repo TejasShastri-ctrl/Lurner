@@ -39,6 +39,11 @@ export default function Insights() {
   const [telemetry, setTelemetry] = useState(null);
   const [loading, setLoading]   = useState(true);
 
+  // AI Report states
+  const [aiReport, setAiReport] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState(null);
+
   useEffect(() => {
     if (token) {
       Promise.all([
@@ -58,8 +63,26 @@ export default function Insights() {
         console.error('Failed to load insights:', err);
         setLoading(false);
       });
+
+      // Try to load cached AI report silently
+      api.fetchAiReport(token, 7).then(report => {
+        if (report) setAiReport(report.reportData);
+      }).catch(console.error);
     }
   }, [token]);
+
+  const handleGenerateAiReport = async () => {
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const response = await api.generateAiReport(token, 7);
+      setAiReport(response.reportData);
+    } catch (err) {
+      setAiError(err.message || 'Failed to generate AI report');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -253,6 +276,98 @@ export default function Insights() {
           ))}
           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>More</span>
         </div>
+      </section>
+
+      {/* AI Insights Section */}
+      <section className="card" style={{ padding: 24, marginTop: 24, border: '1px solid var(--accent-light)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div>
+            <h2 style={{
+              fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)',
+              marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8
+            }}>
+              ✨ AI Performance Review (Last 7 Days)
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
+              Personalized breakdown of your strengths and weaknesses by AI.
+            </p>
+          </div>
+          <button 
+            className="btn btn-primary" 
+            onClick={handleGenerateAiReport} 
+            disabled={aiLoading}
+            style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+          >
+            {aiLoading ? 'Generating...' : aiReport ? 'Regenerate Report' : 'Generate Report'}
+          </button>
+        </div>
+
+        {aiError && (
+          <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginBottom: 16 }}>
+            Error: {aiError}
+          </div>
+        )}
+
+        {aiReport ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ padding: '16px', background: 'var(--bg-app)', borderRadius: 8, borderLeft: '4px solid var(--accent)' }}>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 500, margin: 0 }}>
+                "{aiReport.executive_summary}"
+              </p>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <div>
+                <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--success)', marginBottom: 8 }}>Strengths</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{aiReport.strengths}</p>
+              </div>
+              <div>
+                <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--warning)', marginBottom: 8 }}>Areas for Improvement</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{aiReport.areas_for_improvement}</p>
+              </div>
+            </div>
+
+            <div>
+              <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>Competence Scores</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                {Object.entries(aiReport.competence_scores || {}).map(([topic, score]) => (
+                  <div key={topic}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: '0.8rem' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'capitalize' }}>
+                        {topic.replace(/_/g, ' ')}
+                      </span>
+                      <span style={{ fontWeight: 700 }}>{score}%</span>
+                    </div>
+                    <div style={{ height: 6, background: 'var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', width: `${score}%`, 
+                        background: score > 75 ? 'var(--success)' : score > 40 ? 'var(--warning)' : 'var(--danger)',
+                        borderRadius: 4
+                      }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {aiReport.common_mistakes?.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--danger)', marginBottom: 8 }}>Common Mistakes to Avoid</h3>
+                <ul style={{ margin: 0, paddingLeft: 20, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  {aiReport.common_mistakes.map((mistake, idx) => (
+                    <li key={idx}>{mistake}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ) : (
+          !aiLoading && (
+            <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              Click "Generate Report" to let the AI analyze your recent queries.
+            </div>
+          )
+        )}
       </section>
     </div>
   );

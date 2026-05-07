@@ -23,4 +23,8 @@ router.get("/error-distribution", authMiddleware, analyticsController.getErrorDi
 // Performance telemetry: Execution times and trends
 router.get("/performance-telemetry", authMiddleware, analyticsController.getPerformanceTelemetryHandler);
 
+// AI Reports
+router.post("/ai-report", authMiddleware, analyticsController.generateAiReportHandler);
+router.get("/ai-report", authMiddleware, analyticsController.getAiReportHandler);
+
 export default router;

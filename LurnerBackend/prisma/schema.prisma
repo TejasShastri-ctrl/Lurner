@@ -102,6 +102,7 @@ model User {
   contestsCreated      Contest[]
   contestParticipations ContestParticipant[]
   progress             UserQuestionProgress[]
+  aiReports            AiReport[]
 }
 
 model FriendInvite {
@@ -158,4 +159,13 @@ model ContestParticipant {
   contest    Contest  @relation(fields: [contestId], references: [id])
 
   @@id([userId, contestId])
+}
+
+model AiReport {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id])
+  timeframeDays Int
+  reportData    Json
+  createdAt     DateTime @default(now())
 }

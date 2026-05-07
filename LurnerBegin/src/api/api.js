@@ -175,3 +175,32 @@ export const fetchPerformanceTelemetry = async (token) => {
     });
     return await res.json();
 }
+
+export const generateAiReport = async (token, days = 7) => {
+    const res = await fetch(`${BASE_URL}/analytics/ai-report`, {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ days })
+    });
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to generate report');
+    }
+    return await res.json();
+}
+
+export const fetchAiReport = async (token, days = 7) => {
+    const res = await fetch(`${BASE_URL}/analytics/ai-report?days=${days}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    console.log('ai report fetch response - ', res);
+    if (!res.ok) {
+        if (res.status === 404) return null; // Expected if no report exists
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to fetch report');
+    }
+    return await res.json();
+}

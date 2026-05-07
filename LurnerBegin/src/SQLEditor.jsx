@@ -231,7 +231,7 @@ export function SqlExecutionWindow() {
 
           {/* Left: Problem brief */}
           <div style={{
-            width: 320, flexShrink: 0,
+            width: "40%", flexShrink: 0,  
             borderRight: '1px solid var(--border)',
             display: 'flex', flexDirection: 'column',
             background: 'var(--bg-content)',
